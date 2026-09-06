@@ -534,11 +534,21 @@ function normalize(d) {
    Genre affinity is built from EVERY rating on EVERY movie, both users
    combined (each doc's `ratings` object already holds both people's stars),
    so a genre only both of you love pulls double weight; a genre only one
-   of you loves still counts, just half as strongly. */
-function computeGenreAffinity(movies) {
+   of you loves still counts, just half as strongly.
+
+   Two refinements over a plain average:
+   - mediaType scopes the learning: when Roulette is set to Movies only or
+     TV only, it learns from ratings on THAT media type specifically, not a
+     blended pool -- your taste in movie comedies and TV comedies isn't
+     necessarily the same.
+   - Confidence shrinkage: a genre with only one rating shouldn't swing as
+     hard as one backed by five. Genres with few ratings get pulled back
+     toward neutral; genres with more evidence get their full average. */
+function computeGenreAffinity(movies, mediaType) {
+  const pool = !mediaType || mediaType === "all" ? movies : movies.filter((m) => m.mediaType === mediaType);
   const genreSum = {};
   const genreCount = {};
-  movies.forEach((m) => {
+  pool.forEach((m) => {
     const stars = Object.values(m.ratings || {});
     if (stars.length === 0) return;
     m.genres.forEach((g) => {
@@ -549,7 +559,12 @@ function computeGenreAffinity(movies) {
     });
   });
   const affinity = {};
-  Object.keys(genreSum).forEach((g) => { affinity[g] = genreSum[g] / genreCount[g]; });
+  Object.keys(genreSum).forEach((g) => {
+    const n = genreCount[g];
+    const rawAvg = genreSum[g] / n;
+    const confidence = Math.min(1, n / 5); // full weight once 5+ ratings back a genre
+    affinity[g] = ROULETTE_NEUTRAL_SCORE + confidence * (rawAvg - ROULETTE_NEUTRAL_SCORE);
+  });
   return affinity;
 }
 
@@ -573,6 +588,13 @@ function weightedRandomPick(candidates, weights) {
     if (r <= 0) return candidates[i];
   }
   return candidates[candidates.length - 1];
+}
+
+// Combined average across both users' ratings, or null if nobody's rated it yet.
+function averageRating(movie) {
+  const stars = Object.values(movie.ratings || {});
+  if (stars.length === 0) return null;
+  return stars.reduce((a, b) => a + b, 0) / stars.length;
 }
 
 /* ---------- Small components ---------- */
@@ -625,6 +647,7 @@ function App() {
   const [statusTab, setStatusTab] = useState("all");
   const [mediaFilter, setMediaFilter] = useState("all");
   const [genreFilter, setGenreFilter] = useState("all");
+  const [sortBy, setSortBy] = useState("alpha");
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [detail, setDetail] = useState(null);
@@ -770,8 +793,10 @@ function App() {
   };
 
   // Picks from *this user's* actual queue (things they've said they want to
-  // watch), weighted toward genres both of you rate highly together.
-  // Excludes whatever's currently showing so "Spin Again" doesn't repeat.
+  // watch), weighted toward genres both of you rate highly together --
+  // learned separately from movie ratings vs TV ratings when a specific
+  // media type is selected. Excludes whatever's currently showing so
+  // "Spin Again" doesn't repeat.
   const spinRoulette = () => {
     const wanted = movies.filter((m) => (m.queuedBy || []).includes(user) && !m.seenBy.includes(user));
     const byMedia = rouletteMedia === "all" ? wanted : wanted.filter((m) => m.mediaType === rouletteMedia);
@@ -782,7 +807,7 @@ function App() {
       showToast("Nothing queued for " + label + " yet -- add something to your queue first.");
       return;
     }
-    const affinity = computeGenreAffinity(movies);
+    const affinity = computeGenreAffinity(movies, rouletteMedia);
     const weights = pool.map((m) => weightForMovie(m, affinity));
     setRoulettePick(weightedRandomPick(pool, weights));
   };
@@ -836,7 +861,7 @@ function App() {
   }, [movies]);
 
   const filtered = useMemo(() => {
-    return movies.filter((m) => {
+    const list = movies.filter((m) => {
       // "All" is the static, shared library -- everything either of you has
       // added, unaffected by who's seen what. "Queue" is personal AND
       // curated: it's things *this* user explicitly wants to watch (queuedBy)
@@ -851,7 +876,20 @@ function App() {
       if (genreFilter !== "all" && !m.genres.includes(genreFilter)) return false;
       return true;
     });
-  }, [movies, statusTab, mediaFilter, genreFilter, user]);
+    return list.slice().sort((a, b) => {
+      if (sortBy === "rating") {
+        const ra = averageRating(a);
+        const rb = averageRating(b);
+        if (ra === null && rb === null) return a.title.localeCompare(b.title);
+        if (ra === null) return 1;
+        if (rb === null) return -1;
+        if (rb !== ra) return rb - ra;
+        return a.title.localeCompare(b.title);
+      }
+      if (sortBy === "recent") return (b.addedAt || 0) - (a.addedAt || 0);
+      return a.title.localeCompare(b.title); // "alpha", the default
+    });
+  }, [movies, statusTab, mediaFilter, genreFilter, user, sortBy]);
 
   const seenCount = (u) => movies.filter((m) => m.seenBy.includes(u)).length;
 
@@ -958,26 +996,25 @@ function App() {
             )}
           </div>
 
-          <div className="pill-row" style={{ marginBottom: 8 }}>
-            <span className="pill-label">Roulette picks from</span>
-            {[["all", "Movies + TV"], ["movie", "Movies only"], ["tv", "TV only"]].map(([id, label]) => (
-              <button
-                key={id}
-                className={"pill" + (rouletteMedia === id ? " active" : "")}
-                onClick={() => setRouletteMedia(id)}
-              >
-                {label}
-              </button>
-            ))}
+          <div style={{ display: "flex", gap: 8, marginBottom: 14, alignItems: "center" }}>
+            <select
+              className="field"
+              style={{ width: "auto", flexShrink: 0 }}
+              value={rouletteMedia}
+              onChange={(e) => setRouletteMedia(e.target.value)}
+            >
+              <option value="all">Movies + TV</option>
+              <option value="movie">Movies only</option>
+              <option value="tv">TV only</option>
+            </select>
+            <button
+              className="btn primary"
+              style={{ flex: 1, padding: "12px", fontSize: 15 }}
+              onClick={spinRoulette}
+            >
+              {"\uD83C\uDFB2"} Roulette -- pick something for me
+            </button>
           </div>
-
-          <button
-            className="btn primary"
-            style={{ width: "100%", padding: "12px", fontSize: 15, marginBottom: 14 }}
-            onClick={spinRoulette}
-          >
-            {"\uD83C\uDFB2"} Roulette -- pick something for me
-          </button>
 
           <div className="status-tabs">
             {statusTabs.map((t) => (
@@ -997,14 +1034,19 @@ function App() {
             {[["all", "All"], ["movie", "Films"], ["tv", "TV"]].map(([id, label]) => (
               <button key={id} className={"pill" + (mediaFilter === id ? " active" : "")} onClick={() => setMediaFilter(id)}>{label}</button>
             ))}
+            <span className="divider" />
+            <span className="pill-label">Sort</span>
+            {[["alpha", "Alphabetical"], ["rating", "Rating"], ["recent", "Recent"]].map(([id, label]) => (
+              <button key={id} className={"pill" + (sortBy === id ? " active" : "")} onClick={() => setSortBy(id)}>{label}</button>
+            ))}
           </div>
           {availableGenres.length > 0 && (
             <div className="pill-row">
               <span className="pill-label">Genre</span>
-              <button className={"pill" + (genreFilter === "all" ? " active" : "")} onClick={() => setGenreFilter("all")}>All</button>
-              {availableGenres.map((g) => (
-                <button key={g} className={"pill" + (genreFilter === g ? " active" : "")} onClick={() => setGenreFilter(g)}>{g}</button>
-              ))}
+              <select className="field" style={{ width: "auto" }} value={genreFilter} onChange={(e) => setGenreFilter(e.target.value)}>
+                <option value="all">All</option>
+                {availableGenres.map((g) => <option key={g} value={g}>{g}</option>)}
+              </select>
             </div>
           )}
 
