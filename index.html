@@ -485,7 +485,7 @@ function buildDoc(result, details, overrides) {
     tagline: (details && details.tagline) || "",
     runtime, mediaType,
     category: mediaType === "tv" ? "TV" : "Movies",
-    seenBy: [], ratings: {}, notes: {},
+    seenBy: [], queuedBy: [], ratings: {}, notes: {},
     streamer: "", addedAt: Date.now(),
     ...(overrides || {})
   };
@@ -521,6 +521,7 @@ function normalize(d) {
   return {
     ...d,
     seenBy: Array.isArray(d.seenBy) ? d.seenBy : [],
+    queuedBy: Array.isArray(d.queuedBy) ? d.queuedBy : [],
     ratings: d.ratings && typeof d.ratings === "object" ? d.ratings : {},
     notes: d.notes && typeof d.notes === "object" ? d.notes : {},
     genres: Array.isArray(d.genres) ? d.genres : [],
@@ -634,6 +635,7 @@ function App() {
 
   const moviesRef = useRef([]);
   const migrationRan = useRef(false);
+  const queueMigrationRan = useRef(false);
   const seedRan = useRef(false);
   const searchTimer = useRef(null);
   moviesRef.current = movies;
@@ -691,6 +693,23 @@ function App() {
     }).catch((e) => console.error("Migration error:", e));
   }, [synced]);
 
+  /* One-time migration: backfill queuedBy on everything added before the
+     Queue feature existed. Both users get added, which -- combined with the
+     Queue filter's "not seen by me" clause -- reproduces exactly the old
+     Queue behavior for legacy titles. Only genuinely new items (added after
+     this shipped) get the curated, single-adder queuedBy going forward. */
+  useEffect(() => {
+    if (!synced || queueMigrationRan.current) return;
+    queueMigrationRan.current = true;
+    window.__fb.getMeta().then(async (meta) => {
+      if (meta && meta.queueMigrated) return;
+      const raw = await window.__fb.getAll();
+      const legacy = raw.filter((d) => !Array.isArray(d.queuedBy));
+      await Promise.all(legacy.map((d) => window.__fb.upsert(d.id, { queuedBy: [...USERS] })));
+      await window.__fb.setMeta({ queueMigrated: true });
+    }).catch((e) => console.error("Queue migration error:", e));
+  }, [synced]);
+
   /* Seed when Firestore is completely empty: batches of 5, 250ms apart */
   useEffect(() => {
     if (!synced || seedRan.current || moviesRef.current.length > 0) return;
@@ -731,6 +750,14 @@ function App() {
     if (roulettePick && roulettePick.id === movie.id) setRoulettePick({ ...roulettePick, seenBy });
   };
 
+  const toggleQueued = (movie) => {
+    const has = (movie.queuedBy || []).includes(user);
+    const queuedBy = has ? movie.queuedBy.filter((u) => u !== user) : (movie.queuedBy || []).concat(user);
+    window.__fb.upsert(movie.id, { queuedBy }).catch((e) => console.error(e));
+    if (detail && detail.id === movie.id) setDetail({ ...detail, queuedBy });
+    if (roulettePick && roulettePick.id === movie.id) setRoulettePick({ ...roulettePick, queuedBy });
+  };
+
   const setRating = (movie, stars) => {
     const ratings = { ...movie.ratings };
     if (stars === 0) delete ratings[user]; else ratings[user] = stars;
@@ -742,17 +769,17 @@ function App() {
     if (roulettePick && roulettePick.id === movie.id) setRoulettePick({ ...roulettePick, ratings, seenBy });
   };
 
-  // Picks from *this user's* unseen queue, weighted toward genres both of
-  // you rate highly together. Excludes whatever's currently showing so
-  // "Spin Again" doesn't just hand back the same movie.
+  // Picks from *this user's* actual queue (things they've said they want to
+  // watch), weighted toward genres both of you rate highly together.
+  // Excludes whatever's currently showing so "Spin Again" doesn't repeat.
   const spinRoulette = () => {
-    const unseen = movies.filter((m) => !m.seenBy.includes(user));
-    const byMedia = rouletteMedia === "all" ? unseen : unseen.filter((m) => m.mediaType === rouletteMedia);
+    const wanted = movies.filter((m) => (m.queuedBy || []).includes(user) && !m.seenBy.includes(user));
+    const byMedia = rouletteMedia === "all" ? wanted : wanted.filter((m) => m.mediaType === rouletteMedia);
     const candidates = byMedia.filter((m) => !roulettePick || m.id !== roulettePick.id);
     const pool = candidates.length > 0 ? candidates : byMedia;
     if (pool.length === 0) {
       const label = rouletteMedia === "movie" ? "movies" : rouletteMedia === "tv" ? "TV shows" : "anything";
-      showToast("No unseen " + label + " in your queue -- add something first.");
+      showToast("Nothing queued for " + label + " yet -- add something to your queue first.");
       return;
     }
     const affinity = computeGenreAffinity(movies);
@@ -778,9 +805,15 @@ function App() {
       details = await tmdb(path);
     } catch (e) { /* fine without details */ }
     const doc = buildDoc(result, details, overrides);
-    if (markSeenFor) doc.seenBy = [markSeenFor];
+    if (markSeenFor) {
+      doc.seenBy = [markSeenFor];
+      doc.queuedBy = [];
+    } else {
+      // Adding it IS the "I want to watch this" signal -- queue it for whoever added it.
+      doc.queuedBy = [user];
+    }
     await window.__fb.upsert(doc.id, doc);
-    showToast(markSeenFor ? "Added & marked seen: " + doc.title : "Added: " + doc.title);
+    showToast(markSeenFor ? "Added & marked seen: " + doc.title : "Added to your queue: " + doc.title);
   };
 
   const saveEdit = (movie, fields) => {
@@ -805,10 +838,12 @@ function App() {
   const filtered = useMemo(() => {
     return movies.filter((m) => {
       // "All" is the static, shared library -- everything either of you has
-      // added, unaffected by who's seen what. "Queue" is personal: once
-      // *this* user marks something seen, it drops off their queue, but it
-      // stays in the other person's queue until they've seen it too.
-      if (statusTab === "queue" && m.seenBy.includes(user)) return false;
+      // added, unaffected by who's seen what. "Queue" is personal AND
+      // curated: it's things *this* user explicitly wants to watch (queuedBy)
+      // that they haven't seen yet. Marking something seen drops it from
+      // their queue; it stays in the other person's queue until they've
+      // seen it too.
+      if (statusTab === "queue" && (!(m.queuedBy || []).includes(user) || m.seenBy.includes(user))) return false;
       if (statusTab === "seen_" + USERS[0] && !m.seenBy.includes(USERS[0])) return false;
       if (statusTab === "seen_" + USERS[1] && !m.seenBy.includes(USERS[1])) return false;
       if (statusTab === "both" && !USERS.every((u) => m.seenBy.includes(u))) return false;
@@ -999,6 +1034,7 @@ function App() {
           user={user}
           onClose={() => setDetail(null)}
           onToggleSeen={toggleSeen}
+          onToggleQueued={toggleQueued}
           onRate={setRating}
           onEdit={(m) => { setDetail(null); setEditing(m); }}
         />
@@ -1062,8 +1098,9 @@ function MovieCard({ movie, user, onOpen, onToggleSeen }) {
 }
 
 /* ---------- Detail modal ---------- */
-function DetailModal({ movie, user, onClose, onToggleSeen, onRate, onEdit }) {
+function DetailModal({ movie, user, onClose, onToggleSeen, onToggleQueued, onRate, onEdit }) {
   const seen = movie.seenBy.includes(user);
+  const queued = (movie.queuedBy || []).includes(user);
   return (
     <div className="overlay" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -1083,13 +1120,24 @@ function DetailModal({ movie, user, onClose, onToggleSeen, onRate, onEdit }) {
               <div className="modal-meta">{movie.genres.map((g) => <span key={g} className="chip">{g}</span>)}</div>
             )}
             {movie.overview ? <div className="modal-overview">{movie.overview}</div> : null}
-            <button
-              className={"seen-btn" + (seen ? " on" : "")}
-              style={{ padding: "8px 16px", ...(seen ? { background: USER_COLORS[user] } : {}) }}
-              onClick={() => onToggleSeen(movie)}
-            >
-              {seen ? "\u2713 Seen by " + user : "Mark Seen"}
-            </button>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button
+                className={"seen-btn" + (seen ? " on" : "")}
+                style={{ padding: "8px 16px", ...(seen ? { background: USER_COLORS[user] } : {}) }}
+                onClick={() => onToggleSeen(movie)}
+              >
+                {seen ? "\u2713 Seen by " + user : "Mark Seen"}
+              </button>
+              {!seen && (
+                <button
+                  className={"seen-btn" + (queued ? " on" : "")}
+                  style={{ padding: "8px 16px", ...(queued ? { background: "#5B8DB8" } : {}) }}
+                  onClick={() => onToggleQueued(movie)}
+                >
+                  {queued ? "\u2713 In Your Queue" : "+ Add to Queue"}
+                </button>
+              )}
+            </div>
           </div>
         </div>
         <div className="modal-section">
@@ -1098,6 +1146,7 @@ function DetailModal({ movie, user, onClose, onToggleSeen, onRate, onEdit }) {
               <span className="modal-label" style={{ color: USER_COLORS[u] }}>{u}</span>
               <Stars value={movie.ratings[u] || 0} onSet={u === user ? (n) => onRate(movie, n) : null} />
               {movie.seenBy.includes(u) && <span className="chip" style={{ borderColor: USER_COLORS[u], color: USER_COLORS[u] }}>seen</span>}
+              {!movie.seenBy.includes(u) && (movie.queuedBy || []).includes(u) && <span className="chip" style={{ borderColor: "#5B8DB8", color: "#5B8DB8" }}>queued</span>}
             </div>
           ))}
           {USERS.map((u) => movie.notes[u] ? (
