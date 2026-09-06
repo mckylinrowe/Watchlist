@@ -623,7 +623,6 @@ function App() {
   const [mainTab, setMainTab] = useState("watchlist");
   const [statusTab, setStatusTab] = useState("all");
   const [mediaFilter, setMediaFilter] = useState("all");
-  const [categoryFilter, setCategoryFilter] = useState("all");
   const [genreFilter, setGenreFilter] = useState("all");
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
@@ -805,18 +804,19 @@ function App() {
 
   const filtered = useMemo(() => {
     return movies.filter((m) => {
-      // Both "All" and "Queue" hide what *this* user has already seen -- it's
-      // still visible to the other person until they've seen it too.
-      if ((statusTab === "all" || statusTab === "queue") && m.seenBy.includes(user)) return false;
+      // "All" is the static, shared library -- everything either of you has
+      // added, unaffected by who's seen what. "Queue" is personal: once
+      // *this* user marks something seen, it drops off their queue, but it
+      // stays in the other person's queue until they've seen it too.
+      if (statusTab === "queue" && m.seenBy.includes(user)) return false;
       if (statusTab === "seen_" + USERS[0] && !m.seenBy.includes(USERS[0])) return false;
       if (statusTab === "seen_" + USERS[1] && !m.seenBy.includes(USERS[1])) return false;
       if (statusTab === "both" && !USERS.every((u) => m.seenBy.includes(u))) return false;
       if (mediaFilter !== "all" && m.mediaType !== mediaFilter) return false;
-      if (categoryFilter !== "all" && m.category !== categoryFilter) return false;
       if (genreFilter !== "all" && !m.genres.includes(genreFilter)) return false;
       return true;
     });
-  }, [movies, statusTab, mediaFilter, categoryFilter, genreFilter, user]);
+  }, [movies, statusTab, mediaFilter, genreFilter, user]);
 
   const seenCount = (u) => movies.filter((m) => m.seenBy.includes(u)).length;
 
@@ -963,13 +963,6 @@ function App() {
               <button key={id} className={"pill" + (mediaFilter === id ? " active" : "")} onClick={() => setMediaFilter(id)}>{label}</button>
             ))}
           </div>
-          <div className="pill-row">
-            <span className="pill-label">Category</span>
-            <button className={"pill" + (categoryFilter === "all" ? " active" : "")} onClick={() => setCategoryFilter("all")}>All</button>
-            {CATEGORIES.map((c) => (
-              <button key={c} className={"pill" + (categoryFilter === c ? " active" : "")} onClick={() => setCategoryFilter(c)}>{c}</button>
-            ))}
-          </div>
           {availableGenres.length > 0 && (
             <div className="pill-row">
               <span className="pill-label">Genre</span>
@@ -1051,7 +1044,6 @@ function MovieCard({ movie, user, onOpen, onToggleSeen }) {
         <div className="card-title" onClick={onOpen}>{movie.title}</div>
         <div className="card-sub">
           <span>{movie.year || ""}</span>
-          {movie.category ? <span className="chip">{movie.category}</span> : null}
           {movie.streamer
             ? <span className="streamer-chip" style={{ color: STREAMER_COLORS[movie.streamer] || "#D2601A" }}>{movie.streamer}</span>
             : null}
