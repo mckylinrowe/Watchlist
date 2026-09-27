@@ -118,6 +118,14 @@
   .btn.danger { border-color: #6b2020; color: #e07a7a; }
   .close-x { position: sticky; top: 0; float: right; margin: 10px 10px 0 0; background: #2a2a2a; border: none; color: #F5F5F5; width: 30px; height: 30px; border-radius: 50%; font-size: 15px; z-index: 5; }
 
+  /* Similar titles strip */
+  .similar-section { padding: 0 18px 18px; border-top: 1px solid #2a2a2a; margin-top: 4px; padding-top: 14px; }
+  .similar-heading { font-family: 'Playfair Display', serif; font-size: 14px; font-weight: 700; margin-bottom: 10px; }
+  .similar-strip { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 2px; }
+  .similar-item { flex-shrink: 0; width: 84px; cursor: pointer; }
+  .similar-poster { width: 84px; aspect-ratio: 2 / 3; object-fit: cover; border-radius: 6px; background: #1c1c1c; display: block; }
+  .similar-title { font-size: 11px; color: #ccc; margin-top: 4px; line-height: 1.3; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+
   .field { width: 100%; background: #0f0f0f; border: 1px solid #2a2a2a; color: #F5F5F5; border-radius: 8px; padding: 9px 11px; font-size: 14px; outline: none; }
   .field:focus { border-color: #D2601A; }
   select.field option { background: #141414; }
@@ -991,6 +999,21 @@ function App() {
     setDetail(doc);
   };
 
+  // Clicking a poster in a "More like this" strip should open the same kind
+  // of profile as clicking any other poster in the app: the real detail view
+  // if it's already in the watchlist, a preview if it isn't. Only one modal
+  // shows at a time, so opening one clears the other.
+  const openSimilarTitle = (result, mediaType) => {
+    const found = movies.find((m) => String(m.tmdbId) === String(result.id));
+    if (found) {
+      setPreview(null);
+      setDetail(found);
+    } else {
+      setDetail(null);
+      setPreview({ result: { ...result, media_type: mediaType }, mediaType, overrides: {} });
+    }
+  };
+
   const saveEdit = (movie, fields) => {
     window.__fb.upsert(movie.id, fields)
       .then(() => { setEditing(null); showToast("Saved"); })
@@ -1240,6 +1263,7 @@ function App() {
           onToggleQueued={toggleQueued}
           onRate={setRating}
           onEdit={(m) => { setDetail(null); setEditing(m); }}
+          onOpenSimilar={openSimilarTitle}
         />
       )}
 
@@ -1274,6 +1298,7 @@ function App() {
           onAddToQueue={() => { addResult(preview.result, preview.overrides); setPreview(null); }}
           onMarkSeen={() => { addResult(preview.result, preview.overrides, user); setPreview(null); }}
           onRate={(stars) => addAndRate(preview.result, preview.overrides, stars)}
+          onOpenSimilar={openSimilarTitle}
         />
       )}
 
@@ -1313,8 +1338,54 @@ function MovieCard({ movie, user, onOpen, onToggleSeen }) {
   );
 }
 
+/* ---------- Similar titles strip ---------- */
+// Shown at the bottom of both the real detail view and the preview modal,
+// so "more like this" works the same regardless of whether the title
+// you're looking at is already in the watchlist. Pulls from TMDB's own
+// /similar endpoint for whichever id+mediaType the modal is showing.
+function SimilarTitles({ mediaType, tmdbId, onOpenTitle }) {
+  const [similar, setSimilar] = useState([]);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    setSimilar([]);
+    setLoaded(false);
+    if (!tmdbId) { setLoaded(true); return; }
+    let cancelled = false;
+    const ep = mediaType === "tv" ? "tv" : "movie";
+    tmdb("/" + ep + "/" + tmdbId + "/similar")
+      .then((data) => {
+        if (cancelled) return;
+        setSimilar((data.results || []).filter((r) => r.poster_path).slice(0, 8));
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLoaded(true); });
+    return () => { cancelled = true; };
+  }, [mediaType, tmdbId]);
+
+  if (!tmdbId || (loaded && similar.length === 0)) return null;
+
+  return (
+    <div className="similar-section">
+      <div className="similar-heading">More like this</div>
+      {!loaded
+        ? <div className="loading-line" style={{ padding: "8px 0", textAlign: "left" }}>Loading...</div>
+        : (
+          <div className="similar-strip">
+            {similar.map((r) => (
+              <div key={r.id} className="similar-item" onClick={() => onOpenTitle(r, mediaType)}>
+                <img className="similar-poster" src={IMG_SM + r.poster_path} alt={resultTitle(r)} loading="lazy" />
+                <div className="similar-title">{resultTitle(r)}</div>
+              </div>
+            ))}
+          </div>
+        )}
+    </div>
+  );
+}
+
 /* ---------- Detail modal ---------- */
-function DetailModal({ movie, user, onClose, onToggleSeen, onToggleQueued, onRate, onEdit }) {
+function DetailModal({ movie, user, onClose, onToggleSeen, onToggleQueued, onRate, onEdit, onOpenSimilar }) {
   const seen = movie.seenBy.includes(user);
   const queued = (movie.queuedBy || []).includes(user);
   return (
@@ -1376,6 +1447,7 @@ function DetailModal({ movie, user, onClose, onToggleSeen, onToggleQueued, onRat
           <button className="btn primary" onClick={() => onEdit(movie)}>Edit</button>
           <button className="btn" onClick={onClose}>Close</button>
         </div>
+        <SimilarTitles mediaType={movie.mediaType} tmdbId={movie.tmdbId} onOpenTitle={onOpenSimilar} />
       </div>
     </div>
   );
@@ -1387,7 +1459,7 @@ function DetailModal({ movie, user, onClose, onToggleSeen, onToggleQueued, onRat
 // (a fresh Discover/AFI/search result), there's no movie doc to show yet --
 // this shows what TMDB has directly, with the same Add/Seen actions the
 // card itself offers, so clicking a poster is never a dead end.
-function PreviewModal({ result, mediaType, user, seenByMe, onClose, onAddToQueue, onMarkSeen, onRate }) {
+function PreviewModal({ result, mediaType, user, seenByMe, onClose, onAddToQueue, onMarkSeen, onRate, onOpenSimilar }) {
   const title = resultTitle(result);
   const year = resultYear(result);
   const genreIds = result.genre_ids || [];
@@ -1440,6 +1512,7 @@ function PreviewModal({ result, mediaType, user, seenByMe, onClose, onAddToQueue
         <div className="modal-actions">
           <button className="btn" onClick={onClose}>Close</button>
         </div>
+        <SimilarTitles mediaType={mediaType} tmdbId={result.id} onOpenTitle={onOpenSimilar} />
       </div>
     </div>
   );
