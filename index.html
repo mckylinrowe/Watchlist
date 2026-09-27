@@ -30,16 +30,21 @@
   .picker-avatar { width: 56px; height: 56px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 700; color: #0A0A0A; }
 
   /* Header */
-  .header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 4px; flex-wrap: wrap; }
-  .header h1 { font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 700; }
-  .header-sub { font-size: 10px; color: #666; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 14px; }
-  .header-right { display: flex; align-items: center; gap: 10px; }
+  .header { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; margin-bottom: 4px; }
+  .header-spacer { min-width: 0; }
+  .header h1 { font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 700; text-align: center; }
+  .header-right { display: flex; align-items: center; gap: 10px; justify-self: end; }
   .user-chip { display: flex; align-items: center; gap: 8px; background: #141414; border: 1px solid #2a2a2a; border-radius: 20px; padding: 5px 12px 5px 6px; font-size: 13px; }
   .user-dot { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #0A0A0A; }
   .switch-btn { background: none; border: none; color: #888; font-size: 12px; text-decoration: underline; }
 
-  /* Tabs */
-  .main-tabs { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+  /* Tabs -- shares a row with the titles/seen-count line so they sit on the
+     same plane; a 3-column grid keeps the tabs truly centered regardless of
+     how wide that text is, mirroring the header's title-centering layout. */
+  .main-row { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; margin-bottom: 14px; }
+  .header-sub { font-size: 10px; color: #666; letter-spacing: 1.5px; text-transform: uppercase; white-space: nowrap; }
+  .main-row-spacer { min-width: 0; }
+  .main-tabs { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
   .main-tab { background: #141414; border: 1px solid #2a2a2a; color: #F5F5F5; border-radius: 8px; padding: 8px 16px; font-size: 14px; font-weight: 600; }
   .main-tab.active { background: #D2601A; border-color: #D2601A; color: #0A0A0A; }
 
@@ -81,7 +86,11 @@
   .streamer-chip { border-radius: 10px; padding: 1px 7px; font-size: 10px; font-weight: 700; background: rgba(0,0,0,0.6); }
   .seen-dots { position: absolute; top: 8px; right: 8px; display: flex; gap: 4px; z-index: 2; }
   .seen-dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid #0A0A0A; }
-  .stars-line { font-size: 13px; letter-spacing: 1px; }
+  .stars-line, .stars-input { display: inline-flex; align-items: center; }
+  .stars-line { font-size: 13px; }
+  .star-slot { position: relative; display: inline-block; margin-right: 1px; }
+  .star-empty { color: #3a3a3a; }
+  .star-fill { position: absolute; top: 0; left: 0; overflow: hidden; white-space: nowrap; color: #D2601A; pointer-events: none; }
   .seen-btn { margin-top: auto; border-radius: 7px; border: 1px solid #2a2a2a; background: transparent; color: #ccc; padding: 6px 0; font-size: 12px; font-weight: 600; }
   .seen-btn.on { color: #0A0A0A; border-color: transparent; }
   .rank-badge { position: absolute; top: 8px; left: 8px; display: flex; flex-direction: column; gap: 3px; z-index: 2; }
@@ -100,8 +109,8 @@
   .modal-section { padding: 0 18px 14px; }
   .modal-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
   .modal-label { font-size: 12px; color: #888; min-width: 78px; font-weight: 600; }
-  .stars-input { font-size: 22px; letter-spacing: 3px; user-select: none; }
-  .stars-input span { cursor: pointer; }
+  .stars-input { font-size: 22px; user-select: none; }
+  .stars-input .star-slot { cursor: pointer; margin-right: 4px; }
   .note-text { font-size: 13px; color: #ccc; background: #0f0f0f; border: 1px solid #2a2a2a; border-radius: 8px; padding: 8px 10px; flex: 1; }
   .modal-actions { display: flex; gap: 8px; padding: 0 18px 18px; flex-wrap: wrap; }
   .btn { border-radius: 8px; padding: 9px 16px; font-size: 13px; font-weight: 700; border: 1px solid #2a2a2a; background: transparent; color: #F5F5F5; }
@@ -131,10 +140,39 @@
   .loading-line { text-align: center; color: #888; padding: 30px; font-size: 13px; }
   .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #141414; border: 1px solid #D2601A; color: #F5F5F5; border-radius: 10px; padding: 10px 18px; font-size: 13px; z-index: 200; }
 
+  /* Stats */
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 8px; }
+  .stat-card { background: #141414; border: 1px solid #2a2a2a; border-radius: 10px; padding: 16px; text-align: center; }
+  .stat-number { font-family: 'Playfair Display', serif; font-size: 30px; font-weight: 700; line-height: 1.1; }
+  .stat-label { font-size: 12px; color: #888; margin-top: 4px; }
+  .stats-section { margin: 26px 0; }
+  .stats-heading { font-family: 'Playfair Display', serif; font-size: 16px; font-weight: 700; margin-bottom: 12px; }
+  .stats-note { font-size: 11.5px; color: #666; margin-top: 8px; }
+  .stats-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 24px; }
+  .stats-col-title { font-size: 13px; font-weight: 700; margin-bottom: 10px; }
+  .stats-empty { font-size: 12.5px; color: #666; font-style: italic; }
+  .genre-bar-row { display: grid; grid-template-columns: 78px 1fr 56px; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .genre-bar-label { font-size: 12px; color: #ccc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .genre-bar-track { height: 8px; background: #1c1c1c; border-radius: 4px; overflow: hidden; }
+  .genre-bar-fill { height: 100%; border-radius: 4px; }
+  .genre-bar-value { font-size: 11.5px; color: #999; text-align: right; }
+  .stats-list { display: flex; flex-direction: column; gap: 2px; }
+  .stats-row { display: flex; align-items: center; gap: 12px; padding: 8px 6px; border-radius: 8px; cursor: pointer; }
+  .stats-row:hover { background: #141414; }
+  .stats-thumb { width: 40px; height: 60px; border-radius: 4px; object-fit: cover; flex-shrink: 0; background: #1c1c1c; }
+  .stats-thumb-empty { display: block; }
+  .stats-row-info { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .stats-row-title { font-size: 13.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
   @media (max-width: 560px) {
     .grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
     .modal-hero { flex-direction: column; }
     .modal-poster { width: 110px; }
+    .header { grid-template-columns: 1fr; text-align: center; }
+    .header-spacer { display: none; }
+    .header-right { justify-self: center; }
+    .main-row { grid-template-columns: 1fr; text-align: center; gap: 8px; }
+    .main-row-spacer { display: none; }
   }
 </style>
 </head>
@@ -598,19 +636,34 @@ function averageRating(movie) {
 }
 
 /* ---------- Small components ---------- */
+// Half-star ratings, Letterboxd-style: each star is two click zones (left
+// half sets an X.5, right half sets a whole X). Rendered as a greyed-out
+// star with a colored star clipped to 0/50/100% width laid on top, so a
+// half rating actually shows half a star, not a rounded whole one.
 function Stars({ value, onSet }) {
   const stars = [1, 2, 3, 4, 5];
+  const val = value || 0;
   return (
     <span className={onSet ? "stars-input" : "stars-line"}>
-      {stars.map((n) => (
-        <span
-          key={n}
-          style={{ color: n <= (value || 0) ? "#D2601A" : "#3a3a3a" }}
-          onClick={onSet ? (e) => { e.stopPropagation(); onSet(n === value ? 0 : n); } : undefined}
-        >
-          {"\u2605"}
-        </span>
-      ))}
+      {stars.map((n) => {
+        const fillPct = Math.max(0, Math.min(1, val - (n - 1))) * 100;
+        return (
+          <span
+            key={n}
+            className="star-slot"
+            onClick={onSet ? (e) => {
+              e.stopPropagation();
+              const rect = e.currentTarget.getBoundingClientRect();
+              const leftHalf = (e.clientX - rect.left) < rect.width / 2;
+              const clicked = leftHalf ? n - 0.5 : n;
+              onSet(clicked === val ? 0 : clicked);
+            } : undefined}
+          >
+            <span className="star-empty">{"\u2605"}</span>
+            <span className="star-fill" style={{ width: fillPct + "%" }}>{"\u2605"}</span>
+          </span>
+        );
+      })}
     </span>
   );
 }
@@ -654,13 +707,25 @@ function App() {
   const [editing, setEditing] = useState(null);
   const [toast, setToast] = useState(null);
   const [roulettePick, setRoulettePick] = useState(null);
-  const [rouletteMedia, setRouletteMedia] = useState("all");
+  // AFI poster data lives here (not inside AfiTab) so switching away from the
+  // AFI tab and back doesn't unmount-and-refetch all 123 titles from TMDB
+  // every time -- it's resolved once per session and just sits there.
+  const [afiData, setAfiData] = useState({});
+  const [afiProgress, setAfiProgress] = useState(0);
+  // A TMDB result not yet in the watchlist, opened for preview: { result, mediaType, overrides }.
+  const [preview, setPreview] = useState(null);
 
   const moviesRef = useRef([]);
   const migrationRan = useRef(false);
   const queueMigrationRan = useRef(false);
   const seedRan = useRef(false);
   const searchTimer = useRef(null);
+  // No-repeat shuffle bag for Roulette: every id shown this cycle goes in
+  // here and is excluded from the next spin, so you see every queued title
+  // once before anything repeats. Once the whole pool's been shown, the bag
+  // clears and a fresh cycle starts. Survives across "Spin Again" clicks.
+  const rouletteHistory = useRef([]);
+  const afiLoadStarted = useRef(false);
   moviesRef.current = movies;
 
   const showToast = useCallback((msg) => {
@@ -749,6 +814,33 @@ function App() {
     })().catch((e) => console.error("Seed error:", e)).finally(() => setSeeding(false));
   }, [synced]);
 
+  /* Resolve AFI titles against TMDB the first time the AFI tab is opened,
+     5 at a time / 250ms apart. Lives at App level (not in AfiTab) so it
+     doesn't re-run every time the tab unmounts and remounts. */
+  useEffect(() => {
+    if (mainTab !== "afi" || afiLoadStarted.current) return;
+    afiLoadStarted.current = true;
+    (async () => {
+      for (let i = 0; i < AFI_LIST.length; i += 5) {
+        const batch = AFI_LIST.slice(i, i + 5);
+        const found = await Promise.all(batch.map(async ([t, y]) => {
+          try {
+            const data = await tmdb("/search/movie", { query: t, year: y });
+            return [slugId(t, y), pickByYear(data.results, y)];
+          } catch (e) { return [slugId(t, y), null]; }
+        }));
+        setAfiData((prev) => {
+          const next = { ...prev };
+          found.forEach(([key, r]) => { if (r) next[key] = r; });
+          return next;
+        });
+        setAfiProgress(Math.min(i + 5, AFI_LIST.length));
+        if (i + 5 < AFI_LIST.length) await new Promise((res) => setTimeout(res, 250));
+      }
+      setAfiProgress(AFI_LIST.length);
+    })().catch((e) => console.warn("AFI load error:", e));
+  }, [mainTab]);
+
   /* Debounced TMDB search */
   useEffect(() => {
     if (searchTimer.current) clearTimeout(searchTimer.current);
@@ -795,21 +887,50 @@ function App() {
   // Picks from *this user's* actual queue (things they've said they want to
   // watch), weighted toward genres both of you rate highly together --
   // learned separately from movie ratings vs TV ratings when a specific
-  // media type is selected. Excludes whatever's currently showing so
-  // "Spin Again" doesn't repeat.
+  // media type is selected. Uses the same Format dropdown as the rest of
+  // the page -- there's one Movies/TV control, not a separate Roulette-only
+  // one, since "what you're browsing" and "what Roulette picks from" are
+  // the same idea.
+  //
+  // No-repeat shuffle: every title shown gets added to a "shown" bag and
+  // excluded from the next spin, so a full cycle through your queue never
+  // repeats anything. Once every queued title (for the current media
+  // filter) has been shown once, the bag clears and a new cycle starts.
   const spinRoulette = () => {
     const wanted = movies.filter((m) => (m.queuedBy || []).includes(user) && !m.seenBy.includes(user));
-    const byMedia = rouletteMedia === "all" ? wanted : wanted.filter((m) => m.mediaType === rouletteMedia);
-    const candidates = byMedia.filter((m) => !roulettePick || m.id !== roulettePick.id);
-    const pool = candidates.length > 0 ? candidates : byMedia;
-    if (pool.length === 0) {
-      const label = rouletteMedia === "movie" ? "movies" : rouletteMedia === "tv" ? "TV shows" : "anything";
+    const byMedia = mediaFilter === "all" ? wanted : wanted.filter((m) => m.mediaType === mediaFilter);
+    if (byMedia.length === 0) {
+      const label = mediaFilter === "movie" ? "movies" : mediaFilter === "tv" ? "TV shows" : "anything";
       showToast("Nothing queued for " + label + " yet -- add something to your queue first.");
       return;
     }
-    const affinity = computeGenreAffinity(movies, rouletteMedia);
-    const weights = pool.map((m) => weightForMovie(m, affinity));
-    setRoulettePick(weightedRandomPick(pool, weights));
+
+    // Drop any shown-ids that fell out of the current pool (seen, unqueued,
+    // removed, or a media-filter switch), so a stale bag can't shrink the
+    // real pool artificially.
+    const poolIds = new Set(byMedia.map((m) => m.id));
+    let shownIds = rouletteHistory.current.filter((id) => poolIds.has(id));
+
+    let available = byMedia.filter((m) => !shownIds.includes(m.id));
+    if (available.length === 0) {
+      // Every title in this pool has been shown -- start a fresh cycle, but
+      // don't let the very last pick of the old cycle repeat immediately as
+      // the first pick of the new one.
+      const lastShown = shownIds[shownIds.length - 1];
+      shownIds = [];
+      available = byMedia.filter((m) => m.id !== lastShown);
+      if (available.length === 0) available = byMedia; // pool of 1 -- nothing else possible
+    }
+
+    const affinity = computeGenreAffinity(movies, mediaFilter);
+    // Damp the genre-affinity spread (sqrt) so learning still tilts the odds
+    // toward what you rate highly, but doesn't make a handful of titles so
+    // dominant that they crowd out everything else in the cycle.
+    const weights = available.map((m) => Math.sqrt(weightForMovie(m, affinity)));
+    const pick = weightedRandomPick(available, weights);
+
+    rouletteHistory.current = [...shownIds, pick.id];
+    setRoulettePick(pick);
   };
 
   const addResult = async (result, overrides, markSeenFor) => {
@@ -839,6 +960,35 @@ function App() {
     }
     await window.__fb.upsert(doc.id, doc);
     showToast(markSeenFor ? "Added & marked seen: " + doc.title : "Added to your queue: " + doc.title);
+  };
+
+  // Rating something you haven't added yet (e.g. from the search bar preview)
+  // adds it in the same motion -- rating implies you've seen it, so it's
+  // added and marked seen for you, then the real detail view opens so
+  // you land in the same place a rating from anywhere else in the app does.
+  const addAndRate = async (result, overrides, stars) => {
+    const existing = movies.find((m) => String(m.tmdbId) === String(result.id));
+    let doc;
+    if (existing) {
+      doc = {
+        ...existing,
+        ratings: { ...existing.ratings, [user]: stars },
+        seenBy: existing.seenBy.includes(user) ? existing.seenBy : existing.seenBy.concat(user)
+      };
+    } else {
+      let details = null;
+      try {
+        const path = (result.media_type === "tv" ? "/tv/" : "/movie/") + result.id;
+        details = await tmdb(path);
+      } catch (e) { /* fine without details */ }
+      doc = buildDoc(result, details, overrides);
+      doc.ratings = { [user]: stars };
+      doc.seenBy = [user];
+    }
+    await window.__fb.upsert(doc.id, doc);
+    showToast("Rated & added: " + doc.title);
+    setPreview(null);
+    setDetail(doc);
   };
 
   const saveEdit = (movie, fields) => {
@@ -928,6 +1078,7 @@ function App() {
   return (
     <div className="app">
       <div className="header">
+        <div className="header-spacer" />
         <h1>Watchlist</h1>
         <div className="header-right">
           <div className="user-chip">
@@ -945,16 +1096,18 @@ function App() {
           </button>
         </div>
       </div>
-      <div className="header-sub">
-        {movies.length} titles {"\u00B7"} {seenCount(USERS[0])} seen by {USERS[0]} {"\u00B7"} {seenCount(USERS[1])} seen by {USERS[1]}
-      </div>
-
-      <div className="main-tabs">
-        {[["watchlist", "Watchlist"], ["discover", "Discover"], ["afi", "AFI 100"]].map(([id, label]) => (
-          <button key={id} className={"main-tab" + (mainTab === id ? " active" : "")} onClick={() => setMainTab(id)}>
-            {label}
-          </button>
-        ))}
+      <div className="main-row">
+        <div className="header-sub">
+          {movies.length} titles {"\u00B7"} {seenCount(USERS[0])} seen by {USERS[0]} {"\u00B7"} {seenCount(USERS[1])} seen by {USERS[1]}
+        </div>
+        <div className="main-tabs">
+          {[["watchlist", "Watchlist"], ["discover", "Discover"], ["afi", "AFI 100"], ["stats", "Stats"]].map(([id, label]) => (
+            <button key={id} className={"main-tab" + (mainTab === id ? " active" : "")} onClick={() => setMainTab(id)}>
+              {label}
+            </button>
+          ))}
+        </div>
+        <div className="main-row-spacer" />
       </div>
 
       {mainTab === "watchlist" && (
@@ -969,9 +1122,18 @@ function App() {
             {results.length > 0 && (
               <div className="search-results">
                 {results.map((r) => {
-                  const inList = movies.some((m) => String(m.tmdbId) === String(r.id));
+                  const cardMovie = movies.find((m) => String(m.tmdbId) === String(r.id));
+                  const inList = !!cardMovie;
                   return (
-                    <div key={r.media_type + r.id} className="search-result">
+                    <div
+                      key={r.media_type + r.id}
+                      className="search-result"
+                      style={{ cursor: "pointer" }}
+                      onClick={() => {
+                        if (inList) { setDetail(cardMovie); } else { setPreview({ result: r, mediaType: r.media_type, overrides: {} }); }
+                        setQuery(""); setResults([]);
+                      }}
+                    >
                       {r.poster_path
                         ? <img className="search-thumb" src={IMG_SM + r.poster_path} alt="" />
                         : <div className="search-thumb" />}
@@ -985,7 +1147,7 @@ function App() {
                       <button
                         className="add-btn"
                         disabled={inList}
-                        onClick={() => { addResult(r); setQuery(""); setResults([]); }}
+                        onClick={(e) => { e.stopPropagation(); addResult(r); setQuery(""); setResults([]); }}
                       >
                         {inList ? "Added" : "+ Add"}
                       </button>
@@ -996,23 +1158,13 @@ function App() {
             )}
           </div>
 
-          <div style={{ display: "flex", gap: 8, marginBottom: 14, alignItems: "center" }}>
-            <select
-              className="field"
-              style={{ width: "auto", flexShrink: 0 }}
-              value={rouletteMedia}
-              onChange={(e) => setRouletteMedia(e.target.value)}
-            >
-              <option value="all">Movies + TV</option>
-              <option value="movie">Movies only</option>
-              <option value="tv">TV only</option>
-            </select>
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
             <button
               className="btn primary"
-              style={{ flex: 1, padding: "12px", fontSize: 15 }}
+              style={{ padding: "8px 14px", fontSize: 13 }}
               onClick={spinRoulette}
             >
-              {"\uD83C\uDFB2"} Roulette -- pick something for me
+              {"\uD83C\uDFB2"} Roulette
             </button>
           </div>
 
@@ -1031,24 +1183,29 @@ function App() {
 
           <div className="pill-row">
             <span className="pill-label">Format</span>
-            {[["all", "All"], ["movie", "Films"], ["tv", "TV"]].map(([id, label]) => (
-              <button key={id} className={"pill" + (mediaFilter === id ? " active" : "")} onClick={() => setMediaFilter(id)}>{label}</button>
-            ))}
+            <select className="field" style={{ width: "auto" }} value={mediaFilter} onChange={(e) => setMediaFilter(e.target.value)}>
+              <option value="all">All</option>
+              <option value="movie">Films</option>
+              <option value="tv">TV</option>
+            </select>
             <span className="divider" />
             <span className="pill-label">Sort</span>
-            {[["alpha", "Alphabetical"], ["rating", "Rating"], ["recent", "Recent"]].map(([id, label]) => (
-              <button key={id} className={"pill" + (sortBy === id ? " active" : "")} onClick={() => setSortBy(id)}>{label}</button>
-            ))}
+            <select className="field" style={{ width: "auto" }} value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+              <option value="alpha">Alphabetical</option>
+              <option value="rating">Rating</option>
+              <option value="recent">Recent</option>
+            </select>
+            {availableGenres.length > 0 && (
+              <>
+                <span className="divider" />
+                <span className="pill-label">Genre</span>
+                <select className="field" style={{ width: "auto" }} value={genreFilter} onChange={(e) => setGenreFilter(e.target.value)}>
+                  <option value="all">All</option>
+                  {availableGenres.map((g) => <option key={g} value={g}>{g}</option>)}
+                </select>
+              </>
+            )}
           </div>
-          {availableGenres.length > 0 && (
-            <div className="pill-row">
-              <span className="pill-label">Genre</span>
-              <select className="field" style={{ width: "auto" }} value={genreFilter} onChange={(e) => setGenreFilter(e.target.value)}>
-                <option value="all">All</option>
-                {availableGenres.map((g) => <option key={g} value={g}>{g}</option>)}
-              </select>
-            </div>
-          )}
 
           {!synced && <div className="loading-line">Syncing with Firebase...</div>}
           {seeding && <div className="loading-line">First run: loading the seed list from TMDB... {seedProgress}/{SEED.length}</div>}
@@ -1063,11 +1220,15 @@ function App() {
       )}
 
       {mainTab === "discover" && (
-        <Discover movies={movies} onAdd={addResult} user={user} />
+        <Discover movies={movies} onAdd={addResult} user={user} onOpen={setDetail} onPreview={setPreview} />
       )}
 
       {mainTab === "afi" && (
-        <AfiTab movies={movies} user={user} onAdd={addResult} onOpen={setDetail} />
+        <AfiTab movies={movies} user={user} onAdd={addResult} onOpen={setDetail} onPreview={setPreview} afiData={afiData} afiProgress={afiProgress} />
+      )}
+
+      {mainTab === "stats" && (
+        <StatsTab movies={movies} onOpen={setDetail} />
       )}
 
       {detail && (
@@ -1103,6 +1264,19 @@ function App() {
         />
       )}
 
+      {preview && (
+        <PreviewModal
+          result={preview.result}
+          mediaType={preview.mediaType}
+          user={user}
+          seenByMe={movies.some((m) => String(m.tmdbId) === String(preview.result.id) && m.seenBy.includes(user))}
+          onClose={() => setPreview(null)}
+          onAddToQueue={() => { addResult(preview.result, preview.overrides); setPreview(null); }}
+          onMarkSeen={() => { addResult(preview.result, preview.overrides, user); setPreview(null); }}
+          onRate={(stars) => addAndRate(preview.result, preview.overrides, stars)}
+        />
+      )}
+
       {toast && <div className="toast">{toast}</div>}
     </div>
   );
@@ -1113,13 +1287,13 @@ function MovieCard({ movie, user, onOpen, onToggleSeen }) {
   const seen = movie.seenBy.includes(user);
   const myRating = movie.ratings[user] || 0;
   return (
-    <div className="card">
+    <div className="card" style={{ cursor: "pointer" }} onClick={onOpen}>
       <SeenDots movie={movie} />
       {movie.poster
-        ? <img className="card-poster" src={movie.poster} alt={movie.title} onClick={onOpen} loading="lazy" />
-        : <div className="no-poster" onClick={onOpen}>{movie.title}</div>}
+        ? <img className="card-poster" src={movie.poster} alt={movie.title} loading="lazy" />
+        : <div className="no-poster">{movie.title}</div>}
       <div className="card-body">
-        <div className="card-title" onClick={onOpen}>{movie.title}</div>
+        <div className="card-title">{movie.title}</div>
         <div className="card-sub">
           <span>{movie.year || ""}</span>
           {movie.streamer
@@ -1130,7 +1304,7 @@ function MovieCard({ movie, user, onOpen, onToggleSeen }) {
         <button
           className={"seen-btn" + (seen ? " on" : "")}
           style={seen ? { background: USER_COLORS[user] } : null}
-          onClick={onToggleSeen}
+          onClick={(e) => { e.stopPropagation(); onToggleSeen(); }}
         >
           {seen ? "\u2713 Seen" : "Mark Seen"}
         </button>
@@ -1207,6 +1381,70 @@ function DetailModal({ movie, user, onClose, onToggleSeen, onToggleQueued, onRat
   );
 }
 
+/* ---------- Preview modal (for TMDB results not yet in the watchlist) ---------- */
+// Every poster everywhere should open *something* on click. When the title
+// is already in the watchlist, that's the real DetailModal. When it isn't
+// (a fresh Discover/AFI/search result), there's no movie doc to show yet --
+// this shows what TMDB has directly, with the same Add/Seen actions the
+// card itself offers, so clicking a poster is never a dead end.
+function PreviewModal({ result, mediaType, user, seenByMe, onClose, onAddToQueue, onMarkSeen, onRate }) {
+  const title = resultTitle(result);
+  const year = resultYear(result);
+  const genreIds = result.genre_ids || [];
+  const genres = Array.from(new Set(genreIds.map((g) => GENRE_NAMES[g]).filter(Boolean)));
+  return (
+    <div className="overlay" onClick={onClose}>
+      <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <button className="close-x" onClick={onClose}>{"✕"}</button>
+        <div className="modal-hero">
+          {result.poster_path
+            ? <img className="modal-poster" src={IMG + result.poster_path} alt={title} />
+            : <div className="no-poster modal-poster" style={{ aspectRatio: "2 / 3" }}>{title}</div>}
+          <div className="modal-main">
+            <div className="modal-title">{title} {year ? "(" + year + ")" : ""}</div>
+            <div className="modal-meta">
+              <span>{mediaType === "tv" ? "TV" : "Film"}</span>
+              {result.vote_average ? <span>{"★"} {result.vote_average.toFixed(1)} TMDB</span> : null}
+            </div>
+            {genres.length > 0 && (
+              <div className="modal-meta">{genres.map((g) => <span key={g} className="chip">{g}</span>)}</div>
+            )}
+            {result.overview ? <div className="modal-overview">{result.overview}</div> : null}
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button className="btn primary" style={{ padding: "8px 16px" }} onClick={onAddToQueue}>
+                + Add to Queue
+              </button>
+              <button
+                className={"seen-btn" + (seenByMe ? " on" : "")}
+                style={{ padding: "8px 16px" }}
+                disabled={seenByMe}
+                onClick={onMarkSeen}
+              >
+                {seenByMe ? "✓ Seen" : "Already seen it"}
+              </button>
+            </div>
+          </div>
+        </div>
+        <div className="modal-section">
+          {USERS.map((u) => (
+            <div key={u} className="modal-row">
+              <span className="modal-label" style={{ color: USER_COLORS[u] }}>{u}</span>
+              {/* Rating it (your own row only) adds it to the watchlist in the same
+                  click -- rating implies you've seen it, so there's no separate
+                  "add first, then rate" step needed. */}
+              <Stars value={0} onSet={u === user ? onRate : null} />
+              {u !== user && <span className="chip">not added yet</span>}
+            </div>
+          ))}
+        </div>
+        <div className="modal-actions">
+          <button className="btn" onClick={onClose}>Close</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ---------- Roulette modal ---------- */
 function RouletteModal({ movie, user, onClose, onSpinAgain, onToggleSeen, onViewDetails }) {
   const seen = movie.seenBy.includes(user);
@@ -1219,8 +1457,8 @@ function RouletteModal({ movie, user, onClose, onSpinAgain, onToggleSeen, onView
             {"\uD83C\uDFB2"} Tonight's pick
           </div>
           {movie.poster
-            ? <img src={movie.poster} alt={movie.title} style={{ width: 160, borderRadius: 10, margin: "0 auto" }} />
-            : <div className="no-poster" style={{ width: 160, aspectRatio: "2 / 3", margin: "0 auto", borderRadius: 10 }}>{movie.title}</div>}
+            ? <img src={movie.poster} alt={movie.title} style={{ width: 160, borderRadius: 10, margin: "0 auto", cursor: "pointer" }} onClick={() => onViewDetails(movie)} />
+            : <div className="no-poster" style={{ width: 160, aspectRatio: "2 / 3", margin: "0 auto", borderRadius: 10, cursor: "pointer" }} onClick={() => onViewDetails(movie)}>{movie.title}</div>}
           <div className="modal-title" style={{ marginTop: 12 }}>
             {movie.title} {movie.year ? "(" + movie.year + ")" : ""}
             <span className="chip" style={{ marginLeft: 8, verticalAlign: "middle" }}>
@@ -1307,13 +1545,20 @@ function EditModal({ movie, user, onClose, onSave, onRemove }) {
 }
 
 /* ---------- Discover tab ---------- */
-function Discover({ movies, onAdd, user }) {
+function Discover({ movies, onAdd, user, onOpen, onPreview }) {
   const [genre, setGenre] = useState(0);
   const [streamer, setStreamer] = useState("");
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [error, setError] = useState("");
+  // No-repeat shuffle bag, same idea as Roulette: every title shown for a
+  // given genre+streamer combo gets marked off and excluded from the next
+  // "Find Movies" click, so repeated searches don't keep surfacing the same
+  // handful of popular titles. Keyed per filter combo -- switching genre or
+  // streamer naturally starts a fresh bag for that combo. Once everything
+  // matching has been shown, the bag for that combo clears and cycles again.
+  const shownIds = useRef({});
 
   // Seen movies are filtered out entirely (they're not "discoveries" anymore).
   // Unseen movies already in the queue can still show up, but as "In watchlist"
@@ -1342,7 +1587,10 @@ function Discover({ movies, onAdd, user }) {
       const first = await tmdb("/discover/movie", { ...baseParams, page: 1 });
       const maxPage = Math.min(40, first.total_pages || 1);
       const pageNumbers = new Set([1]);
-      while (pageNumbers.size < Math.min(5, maxPage)) {
+      // Sample more pages (8, up from 5) so the underlying candidate pool is
+      // bigger -- a bigger pool means the no-repeat bag below takes longer
+      // to exhaust and cycle, which is most of what "less repetitive" means.
+      while (pageNumbers.size < Math.min(8, maxPage)) {
         pageNumbers.add(1 + Math.floor(Math.random() * maxPage));
       }
       const restPages = Array.from(pageNumbers).filter((p) => p !== 1);
@@ -1366,7 +1614,22 @@ function Discover({ movies, onAdd, user }) {
       if (favored.length === 0) {
         setError("No new results. Everything matching is already in the watchlist. Try a different genre or streamer.");
       }
-      setItems(favored.slice(0, 12).map((r) => ({ ...r, media_type: "movie" })));
+
+      const bagKey = genre + "|" + streamer;
+      const alreadyShown = shownIds.current[bagKey] || new Set();
+      let candidates = favored.filter((r) => !alreadyShown.has(r.id));
+      if (candidates.length < 12) {
+        // Running low on titles this combo hasn't shown yet -- start a fresh
+        // round instead of just quietly returning fewer and fewer results.
+        candidates = favored;
+        shownIds.current[bagKey] = new Set();
+      }
+      const finalItems = candidates.slice(0, 12).map((r) => ({ ...r, media_type: "movie" }));
+      const bag = shownIds.current[bagKey] || new Set();
+      finalItems.forEach((r) => bag.add(r.id));
+      shownIds.current[bagKey] = bag;
+
+      setItems(finalItems);
     } catch (e) {
       setError("TMDB connection failed (" + e.message + "). Try again or adjust the filters.");
     }
@@ -1405,7 +1668,12 @@ function Discover({ movies, onAdd, user }) {
           const cardMovie = byTmdbId.get(String(r.id));
           const seenByMe = cardMovie ? cardMovie.seenBy.includes(user) : false;
           return (
-            <div key={r.id} className="card">
+            <div
+              key={r.id}
+              className="card"
+              style={{ cursor: "pointer" }}
+              onClick={cardMovie ? () => onOpen(cardMovie) : () => onPreview({ result: r, mediaType: "movie", overrides: { streamer: streamer || "" } })}
+            >
               {streamer && (
                 <div className="rank-badge">
                   <span className="rank-pill" style={{ color: STREAMER_COLORS[streamer] || "#D2601A" }}>{streamer}</span>
@@ -1424,7 +1692,8 @@ function Discover({ movies, onAdd, user }) {
                   className="add-btn"
                   style={{ marginTop: "auto", padding: "7px 0" }}
                   disabled={inList}
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
                     onAdd(r, { streamer: streamer || "" });
                     setItems((prev) => prev.filter((x) => x.id !== r.id));
                   }}
@@ -1435,7 +1704,8 @@ function Discover({ movies, onAdd, user }) {
                   className={"seen-btn" + (seenByMe ? " on" : "")}
                   style={seenByMe ? { background: USER_COLORS[user] } : null}
                   disabled={seenByMe}
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
                     onAdd(r, { streamer: streamer || "" }, user);
                     setItems((prev) => prev.filter((x) => x.id !== r.id));
                   }}
@@ -1451,38 +1721,211 @@ function Discover({ movies, onAdd, user }) {
   );
 }
 
+/* ---------- Stats tab ---------- */
+// Everything here is computed from data already tracked (seenBy, ratings,
+// genres, runtime) -- no new Firestore fields. The one honest caveat: this
+// is "titles marked seen," not a watch date, since the app doesn't log a
+// per-viewing date. A real diary view would need that field added later.
+function GenreBar({ label, barValue, barMax, color, displayText }) {
+  const pct = barMax > 0 ? Math.max(4, (barValue / barMax) * 100) : 0;
+  return (
+    <div className="genre-bar-row">
+      <div className="genre-bar-label">{label}</div>
+      <div className="genre-bar-track">
+        <div className="genre-bar-fill" style={{ width: pct + "%", background: color }} />
+      </div>
+      <div className="genre-bar-value">{displayText}</div>
+    </div>
+  );
+}
+
+function StatsMovieRow({ movie, onOpen }) {
+  return (
+    <div className="stats-row" onClick={() => onOpen(movie)}>
+      {movie.poster
+        ? <img className="stats-thumb" src={movie.poster} alt={movie.title} />
+        : <div className="stats-thumb stats-thumb-empty" />}
+      <div className="stats-row-info">
+        <div className="stats-row-title">{movie.title} {movie.year ? "(" + movie.year + ")" : ""}</div>
+        <Stars value={averageRating(movie)} />
+      </div>
+    </div>
+  );
+}
+
+function StatsTab({ movies, onOpen }) {
+  const stats = useMemo(() => {
+    const seenCounts = {}, queuedCounts = {}, mediaSeenCounts = {}, runtimeMinutes = {};
+    const ratingSum = {}, ratingCount = {}, genreSeenCount = {}, genreRatingSum = {};
+    USERS.forEach((u) => {
+      seenCounts[u] = 0; queuedCounts[u] = 0;
+      mediaSeenCounts[u] = { movie: 0, tv: 0 };
+      runtimeMinutes[u] = 0;
+      ratingSum[u] = 0; ratingCount[u] = 0;
+      genreSeenCount[u] = {}; genreRatingSum[u] = {};
+    });
+    let bothSeen = 0;
+    movies.forEach((m) => {
+      if (USERS.every((u) => m.seenBy.includes(u))) bothSeen++;
+      USERS.forEach((u) => {
+        if (m.seenBy.includes(u)) {
+          seenCounts[u]++;
+          mediaSeenCounts[u][m.mediaType === "tv" ? "tv" : "movie"]++;
+          if (m.runtime) runtimeMinutes[u] += m.runtime;
+          m.genres.forEach((g) => { genreSeenCount[u][g] = (genreSeenCount[u][g] || 0) + 1; });
+        }
+        if ((m.queuedBy || []).includes(u) && !m.seenBy.includes(u)) queuedCounts[u]++;
+        const r = m.ratings[u];
+        if (r) {
+          ratingSum[u] += r; ratingCount[u]++;
+          m.genres.forEach((g) => {
+            const cur = genreRatingSum[u][g] || { sum: 0, count: 0 };
+            cur.sum += r; cur.count++;
+            genreRatingSum[u][g] = cur;
+          });
+        }
+      });
+    });
+
+    const topGenres = {}, bestGenres = {};
+    USERS.forEach((u) => {
+      topGenres[u] = Object.entries(genreSeenCount[u]).sort((a, b) => b[1] - a[1]).slice(0, 5);
+      bestGenres[u] = Object.entries(genreRatingSum[u])
+        .filter(([, v]) => v.count >= 2) // need at least 2 ratings before a genre "average" means anything
+        .map(([g, v]) => [g, v.sum / v.count])
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5);
+    });
+
+    const topRated = movies
+      .filter((m) => Object.keys(m.ratings || {}).length > 0)
+      .slice()
+      .sort((a, b) => averageRating(b) - averageRating(a))
+      .slice(0, 5);
+
+    const bothLoved = movies
+      .filter((m) => USERS.every((u) => (m.ratings[u] || 0) >= 4))
+      .slice()
+      .sort((a, b) => averageRating(b) - averageRating(a))
+      .slice(0, 5);
+
+    return { total: movies.length, bothSeen, seenCounts, queuedCounts, mediaSeenCounts, runtimeMinutes, ratingSum, ratingCount, topGenres, bestGenres, topRated, bothLoved };
+  }, [movies]);
+
+  const fmtHours = (mins) => {
+    if (!mins) return "0h";
+    const h = Math.floor(mins / 60);
+    const m = Math.round(mins % 60);
+    return h + "h" + (m ? " " + m + "m" : "");
+  };
+
+  return (
+    <div>
+      <div className="stat-grid">
+        <div className="stat-card">
+          <div className="stat-number">{stats.total}</div>
+          <div className="stat-label">Titles in the watchlist</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-number" style={{ color: BOTH_SEEN_COLOR }}>{stats.bothSeen}</div>
+          <div className="stat-label">Watched by both of you</div>
+        </div>
+        {USERS.map((u) => (
+          <div key={u} className="stat-card">
+            <div className="stat-number" style={{ color: USER_COLORS[u] }}>{stats.seenCounts[u]}</div>
+            <div className="stat-label">Seen by {u} {"·"} {stats.queuedCounts[u]} queued</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="stats-section">
+        <div className="stats-heading">Time watched</div>
+        <div className="stat-grid">
+          {USERS.map((u) => (
+            <div key={u} className="stat-card">
+              <div className="stat-number" style={{ color: USER_COLORS[u] }}>{fmtHours(stats.runtimeMinutes[u])}</div>
+              <div className="stat-label">{u} {"—"} {stats.mediaSeenCounts[u].movie} films, {stats.mediaSeenCounts[u].tv} shows</div>
+            </div>
+          ))}
+        </div>
+        <div className="stats-note">Based on runtime TMDB has for what's marked seen -- titles without a TMDB match aren't counted.</div>
+      </div>
+
+      <div className="stats-section">
+        <div className="stats-heading">Ratings</div>
+        <div className="stat-grid">
+          {USERS.map((u) => (
+            <div key={u} className="stat-card">
+              <div className="stat-number" style={{ color: USER_COLORS[u] }}>
+                {stats.ratingCount[u] > 0 ? (stats.ratingSum[u] / stats.ratingCount[u]).toFixed(1) : "—"}
+              </div>
+              <div className="stat-label">{u}'s average {"·"} {stats.ratingCount[u]} rated</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="stats-section">
+        <div className="stats-heading">Genres watched most</div>
+        <div className="stats-cols">
+          {USERS.map((u) => (
+            <div key={u} className="stats-col">
+              <div className="stats-col-title" style={{ color: USER_COLORS[u] }}>{u}</div>
+              {stats.topGenres[u].length === 0
+                ? <div className="stats-empty">Nothing seen yet</div>
+                : stats.topGenres[u].map(([g, n]) => (
+                    <GenreBar key={g} label={g} barValue={n} barMax={stats.topGenres[u][0][1]} color={USER_COLORS[u]}
+                      displayText={n + (n === 1 ? " title" : " titles")} />
+                  ))}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="stats-section">
+        <div className="stats-heading">Genres rated highest</div>
+        <div className="stats-cols">
+          {USERS.map((u) => (
+            <div key={u} className="stats-col">
+              <div className="stats-col-title" style={{ color: USER_COLORS[u] }}>{u}</div>
+              {stats.bestGenres[u].length === 0
+                ? <div className="stats-empty">Rate a couple more in the same genre to see this</div>
+                : stats.bestGenres[u].map(([g, avg]) => (
+                    <GenreBar key={g} label={g} barValue={avg} barMax={5} color={USER_COLORS[u]}
+                      displayText={"★ " + avg.toFixed(1)} />
+                  ))}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {stats.bothLoved.length > 0 && (
+        <div className="stats-section">
+          <div className="stats-heading">You both loved</div>
+          <div className="stats-list">
+            {stats.bothLoved.map((m) => <StatsMovieRow key={m.id} movie={m} onOpen={onOpen} />)}
+          </div>
+        </div>
+      )}
+
+      {stats.topRated.length > 0 && (
+        <div className="stats-section">
+          <div className="stats-heading">Highest rated overall</div>
+          <div className="stats-list">
+            {stats.topRated.map((m) => <StatsMovieRow key={m.id} movie={m} onOpen={onOpen} />)}
+          </div>
+        </div>
+      )}
+
+      {stats.total === 0 && <div className="empty">Nothing in the watchlist yet.</div>}
+    </div>
+  );
+}
+
 /* ---------- AFI 100 tab ---------- */
-function AfiTab({ movies, user, onAdd, onOpen }) {
-  const [afiData, setAfiData] = useState({});   // slug -> tmdb search result
-  const [progress, setProgress] = useState(0);
+function AfiTab({ movies, user, onAdd, onOpen, onPreview, afiData, afiProgress }) {
   const [listFilter, setListFilter] = useState("both");
   const [statusFilter, setStatusFilter] = useState("all");
-  const loadStarted = useRef(false);
-
-  /* Batch-resolve AFI titles against TMDB: 5 at a time, 250ms between batches */
-  useEffect(() => {
-    if (loadStarted.current) return;
-    loadStarted.current = true;
-    (async () => {
-      for (let i = 0; i < AFI_LIST.length; i += 5) {
-        const batch = AFI_LIST.slice(i, i + 5);
-        const found = await Promise.all(batch.map(async ([t, y]) => {
-          try {
-            const data = await tmdb("/search/movie", { query: t, year: y });
-            return [slugId(t, y), pickByYear(data.results, y)];
-          } catch (e) { return [slugId(t, y), null]; }
-        }));
-        setAfiData((prev) => {
-          const next = { ...prev };
-          found.forEach(([key, r]) => { if (r) next[key] = r; });
-          return next;
-        });
-        setProgress(Math.min(i + 5, AFI_LIST.length));
-        if (i + 5 < AFI_LIST.length) await new Promise((res) => setTimeout(res, 250));
-      }
-      setProgress(AFI_LIST.length);
-    })().catch((e) => console.warn("AFI load error:", e));
-  }, []);
 
   const rows = AFI_LIST
     .filter(([t, y, r98, r07]) => {
@@ -1499,7 +1942,10 @@ function AfiTab({ movies, user, onAdd, onOpen }) {
     })
     .filter((row) => {
       if (statusFilter === "missing" && row.inList) return false;
-      if (statusFilter === "queue" && !(row.inList && row.inList.seenBy.length === 0)) return false;
+      // "Queued" means YOU queued it and haven't seen it -- not just "unseen by
+      // anyone," which used to be the only signal before the Queue feature
+      // tracked who actually asked to watch what.
+      if (statusFilter === "queue" && !(row.inList && (row.inList.queuedBy || []).includes(user) && !row.inList.seenBy.includes(user))) return false;
       if (statusFilter === "seen" && !(row.inList && row.inList.seenBy.includes(user))) return false;
       return true;
     })
@@ -1518,36 +1964,44 @@ function AfiTab({ movies, user, onAdd, onOpen }) {
           <button key={id} className={"pill" + (statusFilter === id ? " active" : "")} onClick={() => setStatusFilter(id)}>{label}</button>
         ))}
       </div>
-      <div className="afi-progress">
-        Combined 1998 + 2007 lists {"\u00B7"} {AFI_LIST.length} films, deduped
-        {progress < AFI_LIST.length ? " \u00B7 loading posters " + progress + "/" + AFI_LIST.length + "..." : ""}
-      </div>
+      {afiProgress < AFI_LIST.length && (
+        <div className="afi-progress">
+          Loading posters {afiProgress}/{AFI_LIST.length}...
+        </div>
+      )}
       <div className="grid">
         {rows.map(({ t, y, r98, r07, key, r, inList }) => (
-          <div key={key} className="card">
+          <div
+            key={key}
+            className="card"
+            style={{ cursor: r ? "pointer" : "default" }}
+            onClick={inList ? () => onOpen(inList) : (r ? () => onPreview({ result: { ...r, media_type: "movie" }, mediaType: "movie", overrides: { category: "AFI" } }) : undefined)}
+          >
             <div className="rank-badge">
               {r98 ? <span className="rank-pill" style={{ color: "#D2601A" }}>#{r98} '98</span> : null}
               {r07 ? <span className="rank-pill" style={{ color: "#5B8DB8" }}>#{r07} '07</span> : null}
             </div>
             {inList && <SeenDots movie={inList} />}
             {r && r.poster_path
-              ? <img className="card-poster" src={IMG + r.poster_path} alt={t} loading="lazy" onClick={inList ? () => onOpen(inList) : undefined} />
-              : <div className="no-poster" onClick={inList ? () => onOpen(inList) : undefined}>{t}</div>}
+              ? <img className="card-poster" src={IMG + r.poster_path} alt={t} loading="lazy" />
+              : <div className="no-poster">{t}</div>}
             <div className="card-body">
-              <div className="card-title" onClick={inList ? () => onOpen(inList) : undefined}>{t}</div>
+              <div className="card-title">{t}</div>
               <div className="card-sub">
                 <span>{y}</span>
                 {r && r.vote_average ? <span>{"\u2605"} {r.vote_average.toFixed(1)}</span> : null}
               </div>
               {inList
                 ? <button className="seen-btn on" style={{ background: "#2a2a2a", color: "#aaa", cursor: "default" }}>
-                    {inList.seenBy.includes(user) ? "\u2713 Seen" : "Queued"}
+                    {inList.seenBy.includes(user)
+                      ? "\u2713 Seen"
+                      : (inList.queuedBy || []).includes(user) ? "Queued" : "In list"}
                   </button>
                 : <button
                     className="add-btn"
                     style={{ marginTop: "auto", padding: "7px 0" }}
                     disabled={!r}
-                    onClick={() => r && onAdd({ ...r, media_type: "movie" }, { category: "AFI" })}
+                    onClick={(e) => { e.stopPropagation(); r && onAdd({ ...r, media_type: "movie" }, { category: "AFI" }); }}
                   >
                     {r ? "+ Add to queue" : "Loading..."}
                   </button>}
